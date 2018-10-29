@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Aug 19 17:53:44 2018
-
-@author: benjadata
-"""
 import numpy as np 
 import os
 import nltk
@@ -17,7 +10,7 @@ from keras.utils import to_categorical
 
  
 WordEmb = gensim.models.KeyedVectors.load_word2vec_format('./GoogleNews-vectors-negative300.bin',binary=True)
-List_stopwords = set(stopwords.words('english')) #get a list of english stopwords
+List_stopwords = set(stopwords.words('english'))
 
 class Data_Input():
     
@@ -100,12 +93,7 @@ class Data_Input():
         self.Y_train = to_categorical(self.Y_train)
         self.Y_val = np.concatenate([Y_val_pos, Y_val_neg])
         self.Y_val = to_categorical(self.Y_val)
-        
-        self.X_train = self.X_train.astype(np.float16)
-        self.X_val = self.X_val.astype(np.float16)
-        self.Y_train = self.Y_train.astype(np.float16)
-        self.Y_val = self.Y_val.astype(np.float16)
-        
+       
         return (self.X_train, self.X_val, self.Y_train, self.Y_val)
     
     def concatenated_testing_input(self):
