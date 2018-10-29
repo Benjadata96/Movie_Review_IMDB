@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 24 15:03:34 2018
-
-@author: BenjaminSalem
-"""
-
 import keras
 import matplotlib.pyplot as plt
 
