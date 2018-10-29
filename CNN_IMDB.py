@@ -27,7 +27,7 @@ class CNN():
             conv = Conv2D(100, (fsz,300), input_shape=self.shape, padding = 'valid', 
                           activation = 'relu')(input_layer)
             dropout = Dropout(0.5)(conv)
-            max_pool = MaxPooling2D(pool_size = (1496,1), padding='valid')(dropout)
+            max_pool = MaxPooling2D(pool_size = (1500 - fsz + 1,1), padding='valid')(dropout)
             conv_layers.append(max_pool)
         print('.. convs ok ..')
         
