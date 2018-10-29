@@ -49,10 +49,10 @@ class Data_Input():
     
     def global_input(self, files_path):
         
-        input_array = np.zeros((200,1500,300), dtype=np.float32)
+        input_array = np.zeros((25000,1500,300), dtype=np.float32)
         files_list = os.listdir(files_path)
         
-        for i,files in enumerate(files_list[:200]):
+        for i,files in enumerate(files_list):
             X_file = self.sample_input(os.path.join(files_path,files))
             input_array[i,:,:] = X_file 
         
