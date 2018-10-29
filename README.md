@@ -1,6 +1,6 @@
 # Movie_Review_IMDB
 
-This project aims to do sentiment analysis on some movie reviews from IMDB. 
+This project aims to do sentiment analysis on some movie reviews from IMDB using Keras to implement a Deep Learning model.
 The dataset can be found here : http://ai.stanford.edu/~amaas/data/sentiment/
 The dataset is divided in positive and negative reviews, this is why I concatenate the two inputs in the code.
 
