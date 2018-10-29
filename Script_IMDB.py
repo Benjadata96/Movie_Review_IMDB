@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 24 15:24:34 2018
-
-@author: BenjaminSalem
-"""
-
 from Datas_IMDB import *
 from CNN_IMDB import *
 
