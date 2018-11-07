@@ -1,8 +1,15 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Oct 24 15:03:34 2018
+
+@author: BenjaminSalem
+"""
 import keras
 import matplotlib.pyplot as plt
 
-from keras.models import Sequential,Input,Model
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Concatenate
+from keras.models import Input,Model
+from keras.layers import Reshape, Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Concatenate, Embedding
 #from keras.layers.normalization import BatchNormalization
 #from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import SGD, RMSprop, Adam
@@ -10,24 +17,33 @@ from keras.callbacks import Callback
 
 class CNN():
     
-    def __init__(self, model_name):
+    def __init__(self, model_name, epochs, lrate):
         self.name = model_name
         self.model = None
         self.filters_size = [3,4,5]
-        self.shape = (1500,300,1)
-        self.epochs = 10
-        self.lrate = 0.01
+        self.shape = (1500,)
+        self.epochs = epochs
+        self.lrate = lrate
         self.decay = self.lrate / self.epochs
+
+    
+    def building_model(self, embedding_matrix):
         
-    def building_model(self):
-        
-        conv_layers = []
         input_layer = Input(shape = self.shape)
+        
+        embedding_layer = Embedding(embedding_matrix.shape[0], 100, weights=[embedding_matrix],
+                                    input_length = 1500, trainable = False)
+        embedded_input = embedding_layer(input_layer)
+        embedded_input = Dropout(0.5)(embedded_input)
+        
+        reshape = Reshape((1500, 100, 1))(embedded_input)
+        
+        conv_layers = []        
         for fsz in self.filters_size:
-            conv = Conv2D(100, (fsz,300), input_shape=self.shape, padding = 'valid', 
-                          activation = 'relu')(input_layer)
+            conv = Conv2D(100, (fsz,100), input_shape=self.shape, padding = 'valid', 
+                          activation = 'relu')(reshape)
             dropout = Dropout(0.5)(conv)
-            max_pool = MaxPooling2D(pool_size = (1500 - fsz + 1,1), padding='valid')(dropout)
+            max_pool = MaxPooling2D(pool_size = (1500-fsz+1,1), padding='valid')(dropout)
             conv_layers.append(max_pool)
         print('.. convs ok ..')
         
@@ -49,11 +65,12 @@ class CNN():
         self.model.compile(loss='binary_crossentropy', optimizer=gradient_SGD, metrics=['accuracy'])
         print ('.. model is compiled and ready to be trained ..')
         
+        print(self.model.summary())
         return(self.model)
         
-    def training_model(self, X_train, X_val, Y_train, Y_val):
+    def training_model(self, X_train, X_val, Y_train, Y_val, embedding_matrix):
         
-        self.model = self.building_model()
+        self.model = self.building_model(embedding_matrix)
         trained_model = self.model.fit(X_train, Y_train, batch_size=100, epochs=self.epochs,verbose = 1, shuffle = True, validation_data=(X_val,Y_val))
         print('.. model is trained ..')
         
@@ -83,3 +100,13 @@ class CNN():
         test_evaluation = self.model.evaluate(X_test, Y_test, verbose=1)
         print('Test Loss --> ', test_evaluation[0])
         print('Test Accuracy --> ',test_evaluation[1])
+        
+    
+    def main(self, X_train, X_test, X_val, Y_train, Y_test, Y_val, embedding_matrix):
+        
+        self.training_model(X_train, X_val, Y_train, Y_val, embedding_matrix)
+        self.testing_model(X_test, Y_test)
+        
+        
+        
+        

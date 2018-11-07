@@ -1,111 +1,124 @@
 import numpy as np 
+import pandas as pd 
 import os
-import nltk
-import codecs
-import gensim
 
 from sklearn.model_selection import train_test_split
-from nltk.corpus import stopwords 
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
 
- 
-WordEmb = gensim.models.KeyedVectors.load_word2vec_format('./GoogleNews-vectors-negative300.bin',binary=True)
-List_stopwords = set(stopwords.words('english'))
-
+    
 class Data_Input():
     
-    def __init__(self, files_path_pos, files_path_neg):
-        self.files_path_pos = files_path_pos
-        self.files_path_neg = files_path_neg
+    def __init__(self, repos_list, MAX_LENGTH, VALIDATION_SPLIT):
+        self.all_repos = repos_list
+        self.MAX_LENGTH = MAX_LENGTH
         self.X_train = None
         self.X_test = None
         self.X_val = None
         self.Y_train = None
         self.Y_val = None
         self.Y_test = None
-        self.validation_split = 0.1
-        self.MAX_LENGTH = 1500
-        
-        
-    def sample_input(self, file):
-        X=np.zeros((self.MAX_LENGTH,300),dtype=np.float32)
-        with codecs.open(file,"r","utf-8") as review:
-                text = review.readline()
-                tokenized_review = nltk.word_tokenize(text)
-                
-        if len(tokenized_review)> self.MAX_LENGTH:
-            len_review = self.MAX_LENGTH
-        else : 
-            len_review = len(tokenized_review)
-        
-        for i in range(len_review):
-            if tokenized_review[i] not in WordEmb.vocab or tokenized_review[i] in List_stopwords:
-                pass
-            else:
-                X[i]=WordEmb[tokenized_review[i]] 
-
-        return (X)
+        self.VALIDATION_SPLIT = VALIDATION_SPLIT
+        self.embedding_matrix = None
+      
     
-    
-    def global_input(self, files_path):
+    def create_global_dataframe(self):
         
-        input_array = np.zeros((25000,1500,300), dtype=np.float32)
-        files_list = os.listdir(files_path)
+        df = pd.DataFrame([], columns = [['Text','Output', 'Train_or_Test']])
+        df['Output'] = df['Output'].astype('int64')
         
-        for i,files in enumerate(files_list):
-            X_file = self.sample_input(os.path.join(files_path,files))
-            input_array[i,:,:] = X_file 
-        
-        input_array = input_array.reshape(-1,1500,300,1)
-        
-        return (input_array)
-        
-    def create_training_input(self, files_path, is_positive):
-        
-        X_train = self.global_input(files_path)
-        if is_positive == 1:
-            Y_train = np.ones(len(X_train))
-        else : 
-            Y_train = np.zeros(len(X_train))
-        X_train, X_val, Y_train, Y_val = train_test_split(
-                X_train, Y_train, test_size = self.validation_split, random_state = 13) 
-                
-        return (X_train, X_val, Y_train, Y_val)
-    
-    def create_testing_input(self, files_path, is_positive):
-        
-        X_test = self.global_input(files_path)
-        if is_positive == 1:
-            Y_test = np.ones(len(X_test))
-        else:
-            Y_test = np.zeros(len(X_test))
+        for repo in self.all_repos:
+            all_files = os.listdir(repo)    
             
-        return (X_test , Y_test)
+            for file in all_files:                
+                f = open(os.path.join(repo,file),'r')
+                text = f.readline()
+                
+                if len(text) > self.MAX_LENGTH:
+                    text = text[:self.MAX_LENGTH]
+                
+                if 'train' in repo:
+                    if 'pos' in repo:
+                        df = df.append({'Text':text,
+                                        'Output' : 1,
+                                        'Train_or_Test':'train'},ignore_index = True)
+                    else:
+                        df = df.append({'Text':text,
+                                        'Output' : 0,
+                                        'Train_or_Test':'train'},ignore_index = True)
+                else:
+                    if 'pos' in repo:
+                        df = df.append({'Text':text,
+                                        'Output' : 1,
+                                        'Train_or_Test':'test'},ignore_index = True)
+                    else:
+                        df = df.append({'Text':text,
+                                        'Output' : 0,
+                                        'Train_or_Test':'test'},ignore_index = True)  
+        print('.. global dataframe created ..')    
+        return(df)
     
-    def concatenated_training_input(self):
+    
+    def implementing_datas(self, df):
         
-        X_train_pos, X_val_pos, Y_train_pos, Y_val_pos = self.create_training_input(self.files_path_pos, 1)
-        X_train_neg, X_val_neg, Y_train_neg, Y_val_neg = self.create_training_input(self.files_path_neg, 0)
-        print('.. training set created ..')
-        self.X_train = np.concatenate([X_train_pos, X_train_neg])
-        self.X_val = np.concatenate([X_val_pos, X_val_neg])
-        self.Y_train = np.concatenate([Y_train_pos, Y_train_neg])
+        text_list = df.Text.tolist()
+        output_array = df.Output.values
+        
+        Token = Tokenizer()
+        Token.fit_on_texts(text_list)
+        vocab_size = len(Token.word_index) + 1
+
+        encoded_docs = Token.texts_to_sequences(text_list)
+        
+        padded_docs = pad_sequences(encoded_docs, maxlen=self.MAX_LENGTH, padding='post')
+        
+        embeddings_index = dict()
+        f = open('glove.6B/glove.6B.100d.txt')
+        for line in f:
+            	s = line.split()
+            	word = s[0]
+            	coefs = np.asarray(s[1:], dtype='float32')
+            	embeddings_index[word] = coefs
+        f.close()
+        print('.. Loaded %s word vectors.' % len(embeddings_index))
+        
+        embedding_matrix = np.zeros((vocab_size, 100))
+        for word, i in Token.word_index.items():
+            embedding_vector = embeddings_index.get(word)
+            if embedding_vector is not None:
+                embedding_matrix[i] = embedding_vector          
+        print('.. Embedding Matrix created ..')
+        
+        return (padded_docs, output_array, embedding_matrix)        
+    
+    
+    def main(self):
+        
+        df = self.create_global_dataframe()
+        padded_docs, output_array, self.embedding_matrix = self.implementing_datas(df)
+        
+        split = len(padded_docs)/2
+        
+        self.X_train = padded_docs[:split]
+        self.Y_train = output_array[:split]
+        self.X_test = padded_docs[split:]
+        self.Y_test = output_array[split:]
+        
+        self.X_test, self.X_val, self.Y_test, self.Y_val = train_test_split(
+                self.X_test, self.Y_test, test_size = self.VALIDATION_SPLIT, 
+                random_state=13)
+        
         self.Y_train = to_categorical(self.Y_train)
-        self.Y_val = np.concatenate([Y_val_pos, Y_val_neg])
-        self.Y_val = to_categorical(self.Y_val)
-       
-        return (self.X_train, self.X_val, self.Y_train, self.Y_val)
-    
-    def concatenated_testing_input(self):
-        
-        X_test_pos, Y_test_pos = self.create_testing_input(self.files_path_pos, 'positive')
-        X_test_neg, Y_test_neg = self.create_testing_input(self.files_path_neg, 'negative')
-        print('.. testing set created ..')
-        self.X_test = np.concatenate([X_test_pos, X_test_neg])
-        self.Y_test = np.concatenate([Y_test_pos, Y_test_neg])
         self.Y_test = to_categorical(self.Y_test)
+        self.Y_val = to_categorical(self.Y_val)
         
-        return (self.X_test, self.Y_test)
+        print('.. inputs are ready ..')
+        
+        return (self.X_train, self.X_test, self.X_val, 
+                self.Y_train, self.Y_test, self.Y_val,
+                self.embedding_matrix)
+
             
  
 
