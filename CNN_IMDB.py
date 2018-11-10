@@ -6,11 +6,11 @@ from keras.layers import Reshape, Dense, Dropout, Flatten, Conv1D, MaxPooling1D,
 #from keras.layers.normalization import BatchNormalization
 #from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import SGD, RMSprop, Adam
-from keras.callbacks import Callback   
+from keras.callbacks import ModelCheckpoint
 
 class CNN():
     
-    def __init__(self, model_name, epochs, lrate):
+    def __init__(self, model_name, epochs, lrate, weights_filepath):
         self.name = model_name
         self.model = None
         self.filters_size = [3,4,5]
@@ -18,6 +18,7 @@ class CNN():
         self.epochs = epochs
         self.lrate = lrate
         self.decay = self.lrate / self.epochs
+        self.weights_filepath = weights_filepath
 
     
     def building_model(self, embedding_matrix):
@@ -64,7 +65,11 @@ class CNN():
     def training_model(self, X_train, X_val, Y_train, Y_val, embedding_matrix):
         
         self.model = self.building_model(embedding_matrix)
-        trained_model = self.model.fit(X_train, Y_train, batch_size=100, epochs=self.epochs,verbose = 1, shuffle = True, validation_data=(X_val,Y_val))
+        
+        checkpoint = ModelCheckpoint(self.weights_filepath, monitor='val_loss', verbose=0, save_best_only=True, mode='min')
+        callbacks_list = [checkpoint]
+
+        trained_model = self.model.fit(X_train, Y_train, batch_size=100, epochs=self.epochs,verbose = 1, shuffle = True, validation_data=(X_val,Y_val), callbacks=callbacks_list)
         print('.. model is trained ..')
         
         print('.. compiling accuracy and loss ..')
@@ -90,6 +95,7 @@ class CNN():
         
     def testing_model(self, X_test, Y_test):
         
+        #self.model.load_weights("self.weights_filepath")
         test_evaluation = self.model.evaluate(X_test, Y_test, verbose=1)
         print('Test Loss --> ', test_evaluation[0])
         print('Test Accuracy --> ',test_evaluation[1])
