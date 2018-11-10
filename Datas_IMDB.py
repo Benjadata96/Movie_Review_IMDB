@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
+from math import ceil
 
     
 class Data_Input():
@@ -98,7 +99,7 @@ class Data_Input():
         df = self.create_global_dataframe()
         padded_docs, output_array, self.embedding_matrix = self.implementing_datas(df)
         
-        split = len(padded_docs)/2
+        split = ceil(len(padded_docs)/2)
         
         self.X_train = padded_docs[:split]
         self.Y_train = output_array[:split]
