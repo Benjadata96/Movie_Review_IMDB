@@ -1,15 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 24 15:03:34 2018
-
-@author: BenjaminSalem
-"""
 import keras
 import matplotlib.pyplot as plt
 
 from keras.models import Input,Model
-from keras.layers import Reshape, Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Concatenate, Embedding
+from keras.layers import Reshape, Dense, Dropout, Flatten, Conv1D, MaxPooling1D, Concatenate, Embedding
 #from keras.layers.normalization import BatchNormalization
 #from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import SGD, RMSprop, Adam
@@ -32,18 +25,18 @@ class CNN():
         input_layer = Input(shape = self.shape)
         
         embedding_layer = Embedding(embedding_matrix.shape[0], 100, weights=[embedding_matrix],
-                                    input_length = 1500, trainable = False)
+                                    input_length = 1500, trainable = True)
         embedded_input = embedding_layer(input_layer)
         embedded_input = Dropout(0.5)(embedded_input)
         
-        reshape = Reshape((1500, 100, 1))(embedded_input)
+        #reshape = Reshape((1500, 100, 1))(embedded_input)
         
         conv_layers = []        
         for fsz in self.filters_size:
-            conv = Conv2D(100, (fsz,100), input_shape=self.shape, padding = 'valid', 
-                          activation = 'relu')(reshape)
+            conv = Conv1D(100, fsz, input_shape=self.shape, padding = 'valid', 
+                          activation = 'relu')(embedded_input)
             dropout = Dropout(0.5)(conv)
-            max_pool = MaxPooling2D(pool_size = (1500-fsz+1,1), padding='valid')(dropout)
+            max_pool = MaxPooling1D(pool_size = 1500-fsz+1, padding='valid')(dropout)
             conv_layers.append(max_pool)
         print('.. convs ok ..')
         
